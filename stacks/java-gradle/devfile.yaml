@@ -1,0 +1,73 @@
+schemaVersion: 2.2.0
+
+metadata:
+  name: java-gradle
+  version: 0.1.0
+  displayName: Gradle Java
+  description: Upstream Gradle and OpenJDK 17
+  tags:
+    - Java
+    - Gradle
+  projectType: Gradle
+  language: Java
+  icon: https://raw.githubusercontent.com/devfile-samples/devfile-stack-icons/main/java-maven.jpg
+
+variables:
+  gradle_cmd: "./gradlew -g /var/lib/gradle-cache --no-daemon"
+
+components:
+  - name: tools
+    container:
+      image: registry.access.redhat.com/ubi9/openjdk-17:latest
+      command: ["tail"]
+      args: ["-f", "/dev/null"]
+      memoryLimit: 512Mi
+      mountSources: true
+      endpoints:
+        - name: http
+          targetPort: 8080
+        - exposure: none
+          name: debug
+          targetPort: 5858
+      volumeMounts:
+        - name: gradle-cache
+          path: /var/lib/gradle-cache
+      env:
+        - name: DEBUG_PORT
+          value: '5858'
+  - name: gradle-cache
+    volume: {}
+
+commands:
+  - id: build
+    exec:
+      component: tools
+      workingDir: ${PROJECT_SOURCE}
+      commandLine: '{{gradle_cmd}} build -x test'
+      group:
+        kind: build
+        isDefault: true
+  - id: run
+    exec:
+      component: tools
+      workingDir: ${PROJECT_SOURCE}
+      commandLine: 'java -jar build/libs/*.jar'
+      group:
+        kind: run
+        isDefault: true
+  - id: debug
+    exec:
+      component: tools
+      workingDir: ${PROJECT_SOURCE}
+      commandLine: 'java -Xdebug -Xrunjdwp:server=y,transport=dt_socket,address=${DEBUG_PORT},suspend=n -jar build/libs/*.jar'
+      group:
+        kind: debug
+        isDefault: true
+  - id: test
+    exec:
+      component: tools
+      workingDir: ${PROJECT_SOURCE}
+      commandLine: '{{gradle_cmd}} test'
+      group:
+        kind: test
+        isDefault: true
